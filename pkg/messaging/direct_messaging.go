@@ -135,14 +135,16 @@ func (d *directMessaging) Invoke(ctx context.Context, targetAppID string, req *i
 }
 
 // requestAppIDAndNamespace takes an app id and returns the app id, namespace and error.
-func (d *directMessaging) requestAppIDAndNamespace(targetAppID string) (string, string, error) {
+func (d *directMessaging) requestAppIDAndNamespace(targetAppID string) (string, string, string, error) {
 	items := strings.Split(targetAppID, ".")
 	if len(items) == 1 {
-		return targetAppID, d.namespace, nil
+		return "", targetAppID, d.namespace, nil
 	} else if len(items) == 2 {
-		return items[0], items[1], nil
+		return "", items[0], items[1], nil
+	} else if len(items) == 3 {
+		return items[0], items[1], items[2], nil
 	} else {
-		return "", "", errors.Errorf("invalid app id %s", targetAppID)
+		return "", "", "", errors.Errorf("invalid app id %s", targetAppID)
 	}
 }
 
@@ -310,12 +312,12 @@ func (d *directMessaging) addForwardedHeadersToMetadata(req *invokev1.InvokeMeth
 }
 
 func (d *directMessaging) getRemoteApp(appID string) (remoteApp, error) {
-	id, namespace, err := d.requestAppIDAndNamespace(appID)
+	prefix, id, namespace, err := d.requestAppIDAndNamespace(appID)
 	if err != nil {
 		return remoteApp{}, err
 	}
 
-	request := nr.ResolveRequest{ID: id, Namespace: namespace, Port: d.grpcPort}
+	request := nr.ResolveRequest{Prefix: prefix, ID: id, Namespace: namespace, Port: d.grpcPort}
 	address, err := d.resolver.ResolveID(request)
 	if err != nil {
 		return remoteApp{}, err
